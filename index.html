@@ -5,14 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مواعيد دفع الاشتراكات</title>
     
+    <!-- كاشف الأخطاء -->
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        var errorContainer = document.getElementById('error-container');
+        if (!errorContainer) {
+            errorContainer = document.createElement("div");
+            errorContainer.id = 'error-container';
+            errorContainer.style.cssText = "position:fixed;top:0;left:0;width:100%;background:#fee2e2;color:#991b1b;padding:20px;z-index:9999;text-align:center;direction:rtl;border-bottom:2px solid #ef4444;font-family:sans-serif;";
+            document.body.appendChild(errorContainer);
+        }
+        errorContainer.innerHTML = "<strong>⚠️ حدث خطأ تقني:</strong><br>" + message;
+      };
+    </script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     
     <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     
-    <!-- Babel (to compile JSX) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Font -->
@@ -21,37 +46,26 @@
     <style>
         body { font-family: 'Cairo', sans-serif; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes blob {
-            0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob { animation: blob 7s infinite; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-[#F3F4F6]">
 
-    <div id="root"></div>
+    <div id="root">
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:sans-serif;">
+            <div style="width:50px;height:50px;border:5px solid #d1d5db;border-top-color:#4f46e5;border-radius:50%;animation:spin 1s linear infinite;"></div>
+            <p style="margin-top:20px;color:#4b5563;">جاري التحميل...</p>
+        </div>
+    </div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="env,react">
         const { useState, useEffect } = React;
 
-        // --- إعدادات الروابط والأرقام ---
         const config = {
             vodafoneCash: "01110556625",
             instaPay: "01110556625", 
-            // رابط الفورم الجديد
-            formUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdiIx2QWtTyMD9aOK8bK84P2yS5Yr9504k9s13g8F8RK50Qyw/viewform?usp=dialog", 
         };
 
-        // --- Icon Components ---
         const Icons = {
             Atom: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>,
             Calculator: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
@@ -95,19 +109,35 @@
             };
 
             const handleCopy = (text, type) => {
-                navigator.clipboard.writeText(text);
-                if (type === 'vf') {
-                    setCopiedVF(true);
-                    setTimeout(() => setCopiedVF(false), 2000);
+                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        if (type === 'vf') {
+                            setCopiedVF(true);
+                            setTimeout(() => setCopiedVF(false), 2000);
+                        } else {
+                            setCopiedInsta(true);
+                            setTimeout(() => setCopiedInsta(false), 2000);
+                        }
+                    }).catch(err => alert("انسخ الرقم: " + text));
                 } else {
-                    setCopiedInsta(true);
-                    setTimeout(() => setCopiedInsta(false), 2000);
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        if (type === 'vf') setCopiedVF(true);
+                        else setCopiedInsta(true);
+                        setTimeout(() => { setCopiedVF(false); setCopiedInsta(false); }, 2000);
+                    } catch (err) {
+                        alert("انسخ الرقم: " + text);
+                    }
+                    document.body.removeChild(textArea);
                 }
             };
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
-                     {/* Background Animation */}
                     <div className="fixed inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
                         <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -116,7 +146,6 @@
 
                     <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-white/50 relative z-10">
                         
-                        {/* Header */}
                         <div className="relative p-8 pb-6">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg shadow-indigo-200 text-white">
@@ -131,7 +160,6 @@
                             <p className="text-gray-500 font-medium text-sm">اختر المادة لعرض طرق الدفع والتأكيد</p>
                         </div>
 
-                        {/* List */}
                         <div className="px-6 pb-4 space-y-4">
                             {schedules.map((item) => (
                             <div 
@@ -163,7 +191,6 @@
                             ))}
                         </div>
 
-                         {/* Footer */}
                         <div className="p-6 pt-2">
                             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex gap-3">
                                 <div className="bg-orange-100 p-2 rounded-full h-fit shrink-0">
@@ -172,13 +199,12 @@
                                 <div>
                                     <h4 className="font-bold text-gray-700 text-xs mb-1">ملاحظة هامة</h4>
                                     <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
-                                        يرجى ملء فورم التأكيد بعد الدفع مباشرة لضمان تسجيل الحصة.
+                                        تأكد من اختيار طريقة الدفع المناسبة ونسخ الرقم الصحيح.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Modal */}
                         {selectedSubject && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={closeModal}></div>
@@ -190,53 +216,41 @@
 
                                 <div className="p-6">
                                     <div className="text-center pt-4 pb-2">
-                                        {/* Subject Icon */}
                                         <div className={`w-16 h-16 bg-gradient-to-br ${selectedSubject.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg text-white`}>
                                             <Icons.Phone className="w-8 h-8" />
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-800 mb-1">{selectedSubject.subject}</h3>
                                         <p className="text-gray-500 text-sm px-4 mb-6">طرق الدفع المتاحة</p>
 
-                                        {/* Payment Methods */}
-                                        <div className="space-y-3 mb-6">
-                                            {/* Vodafone Cash */}
-                                            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-red-200 transition-all" onClick={() => handleCopy(config.vodafoneCash, 'vf')}>
-                                                <div className="text-right">
-                                                    <p className="text-xs text-red-400 font-bold mb-1 flex items-center gap-1">
-                                                        <Icons.Phone className="w-3 h-3" /> فودافون كاش
-                                                    </p>
-                                                    <p className="text-lg font-black text-gray-800 font-mono tracking-wider">{config.vodafoneCash}</p>
-                                                </div>
-                                                <div className={`p-2.5 rounded-xl transition-all ${copiedVF ? 'bg-green-500 text-white' : 'bg-white text-gray-400 shadow-sm'}`}>
-                                                    {copiedVF ? <Icons.Check className="w-5 h-5" /> : <Icons.Copy className="w-5 h-5" />}
-                                                </div>
-                                            </div>
+                                        <div className="space-y-4 mb-6">
+                                            {/* Vodafone Cash Button */}
+                                            <button 
+                                                onClick={() => handleCopy(config.vodafoneCash, 'vf')}
+                                                className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
+                                                    copiedVF 
+                                                    ? 'bg-green-500 text-white shadow-green-200' 
+                                                    : 'bg-red-600 text-white shadow-red-200 hover:bg-red-700 hover:scale-[1.02]'
+                                                }`}
+                                            >
+                                                {copiedVF ? <Icons.Check className="w-5 h-5" /> : <Icons.Phone className="w-5 h-5" />}
+                                                {copiedVF ? 'تم نسخ الرقم' : `فودافون كاش: ${config.vodafoneCash}`}
+                                            </button>
 
-                                            {/* InstaPay */}
-                                            <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-purple-200 transition-all" onClick={() => handleCopy(config.instaPay, 'insta')}>
-                                                <div className="text-right">
-                                                    <p className="text-xs text-purple-500 font-bold mb-1 flex items-center gap-1">
-                                                        <Icons.InstaPay className="w-3 h-3" /> انستا باي (InstaPay)
-                                                    </p>
-                                                    <p className="text-lg font-black text-gray-800 font-mono tracking-wider">{config.instaPay}</p>
-                                                </div>
-                                                <div className={`p-2.5 rounded-xl transition-all ${copiedInsta ? 'bg-green-500 text-white' : 'bg-white text-gray-400 shadow-sm'}`}>
-                                                    {copiedInsta ? <Icons.Check className="w-5 h-5" /> : <Icons.Copy className="w-5 h-5" />}
-                                                </div>
-                                            </div>
+                                            {/* InstaPay Button */}
+                                            <button 
+                                                onClick={() => handleCopy(config.instaPay, 'insta')}
+                                                className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
+                                                    copiedInsta 
+                                                    ? 'bg-green-500 text-white shadow-green-200' 
+                                                    : 'bg-purple-600 text-white shadow-purple-200 hover:bg-purple-700 hover:scale-[1.02]'
+                                                }`}
+                                            >
+                                                {copiedInsta ? <Icons.Check className="w-5 h-5" /> : <Icons.InstaPay className="w-5 h-5" />}
+                                                {copiedInsta ? 'تم نسخ المعرف' : `انستا باي: ${config.instaPay}`}
+                                            </button>
                                         </div>
 
-                                        {/* Actions */}
                                         <div className="space-y-3 pt-2 border-t border-gray-100">
-                                            <p className="text-xs text-gray-400 font-medium mb-1">بعد التحويل، يرجى ملء البيانات هنا:</p>
-                                            
-                                            {/* External Form Button */}
-                                            <a href={config.formUrl} target="_blank" className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-4 rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-lg shadow-gray-200">
-                                                <Icons.Link className="w-4 h-4" />
-                                                تأكيد الدفع (فتح الفورم)
-                                            </a>
-
-                                            {/* Call Button */}
                                             <a href={`tel:${config.vodafoneCash}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">
                                                 <Icons.Phone className="w-4 h-4" />
                                                 اتصال للاستفسار
@@ -256,8 +270,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
-
-
-
