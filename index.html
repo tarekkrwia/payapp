@@ -5,40 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مواعيد دفع الاشتراكات</title>
     
-    <!-- كاشف الأخطاء -->
-    <script>
-      window.onerror = function(message, source, lineno, colno, error) {
-        var errorContainer = document.getElementById('error-container');
-        if (!errorContainer) {
-            errorContainer = document.createElement("div");
-            errorContainer.id = 'error-container';
-            errorContainer.style.cssText = "position:fixed;top:0;left:0;width:100%;background:#fee2e2;color:#991b1b;padding:20px;z-index:9999;text-align:center;direction:rtl;border-bottom:2px solid #ef4444;font-family:sans-serif;";
-            document.body.appendChild(errorContainer);
-        }
-        errorContainer.innerHTML = "<strong>⚠️ حدث خطأ تقني:</strong><br>" + message;
-      };
-    </script>
-
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Cairo', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
     
     <!-- React & ReactDOM -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel -->
+    <!-- Babel (to compile JSX) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase Compat Scripts (Solves the Babel Module Error) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -46,51 +26,88 @@
     <style>
         body { font-family: 'Cairo', sans-serif; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
     </style>
 </head>
 <body class="bg-[#F3F4F6]">
 
-    <div id="root">
-        <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:sans-serif;">
-            <div style="width:50px;height:50px;border:5px solid #d1d5db;border-top-color:#4f46e5;border-radius:50%;animation:spin 1s linear infinite;"></div>
-            <p style="margin-top:20px;color:#4b5563;">جاري التحميل...</p>
-        </div>
-    </div>
+    <div id="root"></div>
 
-    <script type="text/babel" data-presets="env,react">
+    <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const config = {
-            vodafoneCash: "01110556625",
-            instaPay: "01110556625", 
+        // ------------------------------------------------------------------
+        // تنبيه هام: قم باستبدال هذه البيانات ببيانات مشروعك من Firebase Console
+        // ------------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyD...", 
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
         };
+        // ------------------------------------------------------------------
 
+        // تهيئة Firebase (باستخدام النمط التوافقي Global Namespace)
+        let auth, db;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            auth = firebase.auth();
+            db = firebase.firestore();
+        } catch (e) {
+            console.error("Firebase not configured correctly", e);
+        }
+
+        // --- Icon Components ---
         const Icons = {
             Atom: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>,
             Calculator: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
             BookOpen: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
             Calendar: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
-            Sparkles: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></svg>,
+            Sparkles: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></svg>,
             AlertCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
             Phone: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
             Copy: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>,
             Check: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
             X: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
-            Link: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
-            InstaPay: (props) => (
-                <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                   <rect x="2" y="5" width="20" height="14" rx="2" />
-                   <line x1="2" y1="10" x2="22" y2="10" />
-                   <line x1="12" y1="15" x2="16" y2="15" />
-                </svg>
-            )
+            Send: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,
+            User: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            Smartphone: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>,
+            MessageSquare: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         };
 
         function App() {
+            const [user, setUser] = useState(null);
             const [selectedSubject, setSelectedSubject] = useState(null);
-            const [copiedVF, setCopiedVF] = useState(false);
-            const [copiedInsta, setCopiedInsta] = useState(false);
+            const [modalView, setModalView] = useState('info');
+            const [copied, setCopied] = useState(false);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [formData, setFormData] = useState({ studentName: '', paymentPhone: '', notes: '' });
+
+            const adminPhone = "01110556625";
+
+            // Auth Hook
+            useEffect(() => {
+                if(!auth) return;
+                const unsubscribe = auth.onAuthStateChanged(setUser);
+                auth.signInAnonymously().catch(console.error);
+                return () => unsubscribe();
+            }, []);
 
             const schedules = [
                 { id: 1, subject: 'الفيزياء (لغات)', day: 'الأحد', icon: <Icons.Atom className="w-6 h-6" />, color: 'from-blue-500 to-cyan-400', shadow: 'shadow-blue-200', lightBg: 'bg-blue-50', badgeColor: 'text-blue-600 bg-blue-100', note: 'Physics - Languages' },
@@ -100,44 +117,55 @@
 
             const handleCardClick = (item) => {
                 setSelectedSubject(item);
+                setModalView('info');
+                setFormData({ studentName: '', paymentPhone: '', notes: '' });
             };
 
             const closeModal = () => {
                 setSelectedSubject(null);
-                setCopiedVF(false);
-                setCopiedInsta(false);
+                setModalView('info');
             };
 
-            const handleCopy = (text, type) => {
-                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text).then(() => {
-                        if (type === 'vf') {
-                            setCopiedVF(true);
-                            setTimeout(() => setCopiedVF(false), 2000);
-                        } else {
-                            setCopiedInsta(true);
-                            setTimeout(() => setCopiedInsta(false), 2000);
-                        }
-                    }).catch(err => alert("انسخ الرقم: " + text));
-                } else {
-                    const textArea = document.createElement("textarea");
-                    textArea.value = text;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                        if (type === 'vf') setCopiedVF(true);
-                        else setCopiedInsta(true);
-                        setTimeout(() => { setCopiedVF(false); setCopiedInsta(false); }, 2000);
-                    } catch (err) {
-                        alert("انسخ الرقم: " + text);
-                    }
-                    document.body.removeChild(textArea);
+            const handleCopy = () => {
+                navigator.clipboard.writeText(adminPhone);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!auth || !db) {
+                    alert("لم يتم ربط قاعدة البيانات بشكل صحيح. تأكد من إعدادات Firebase.");
+                    return;
+                }
+                if (!user) {
+                    alert("جاري تسجيل الدخول... حاول مرة أخرى بعد ثوانٍ.");
+                    return;
+                }
+
+                setIsSubmitting(true);
+                try {
+                    await db.collection('payment_notifications').add({
+                        userId: user.uid,
+                        studentName: formData.studentName,
+                        paymentPhone: formData.paymentPhone,
+                        notes: formData.notes,
+                        subject: selectedSubject.subject,
+                        subjectId: selectedSubject.id,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    });
+                    setModalView('success');
+                } catch (error) {
+                    console.error("Error saving document: ", error);
+                    alert("حدث خطأ أثناء الإرسال: " + error.message);
+                } finally {
+                    setIsSubmitting(false);
                 }
             };
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
+                     {/* Background Animation */}
                     <div className="fixed inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
                         <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -146,6 +174,7 @@
 
                     <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] overflow-hidden border border-white/50 relative z-10">
                         
+                        {/* Header */}
                         <div className="relative p-8 pb-6">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg shadow-indigo-200 text-white">
@@ -157,9 +186,10 @@
                                 </div>
                             </div>
                             <h1 className="text-3xl font-black text-gray-800 mb-1">مواعيد الدفع</h1>
-                            <p className="text-gray-500 font-medium text-sm">اختر المادة لعرض طرق الدفع والتأكيد</p>
+                            <p className="text-gray-500 font-medium text-sm">اختر المادة للدفع أو تسجيل البيانات</p>
                         </div>
 
+                        {/* List */}
                         <div className="px-6 pb-4 space-y-4">
                             {schedules.map((item) => (
                             <div 
@@ -191,6 +221,7 @@
                             ))}
                         </div>
 
+                         {/* Footer */}
                         <div className="p-6 pt-2">
                             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex gap-3">
                                 <div className="bg-orange-100 p-2 rounded-full h-fit shrink-0">
@@ -199,12 +230,13 @@
                                 <div>
                                     <h4 className="font-bold text-gray-700 text-xs mb-1">ملاحظة هامة</h4>
                                     <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
-                                        تأكد من اختيار طريقة الدفع المناسبة ونسخ الرقم الصحيح.
+                                        البيانات المسجلة تصل فوراً للإدارة. يرجى التأكد من صحة رقم التحويل.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Modal */}
                         {selectedSubject && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={closeModal}></div>
@@ -214,50 +246,91 @@
                                     <Icons.X className="w-5 h-5" />
                                 </button>
 
-                                <div className="p-6">
-                                    <div className="text-center pt-4 pb-2">
-                                        <div className={`w-16 h-16 bg-gradient-to-br ${selectedSubject.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg text-white`}>
-                                            <Icons.Phone className="w-8 h-8" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-1">{selectedSubject.subject}</h3>
-                                        <p className="text-gray-500 text-sm px-4 mb-6">طرق الدفع المتاحة</p>
+                                {modalView === 'info' && (
+                                    <div className="p-6">
+                                        <div className="text-center pt-4 pb-2">
+                                            <div className={`w-16 h-16 bg-gradient-to-br ${selectedSubject.color} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg text-white`}>
+                                                <Icons.Phone className="w-8 h-8" />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-800 mb-1">{selectedSubject.subject}</h3>
+                                            <p className="text-gray-500 text-sm px-4 mb-6">الدفع عبر المحفظة الإلكترونية</p>
 
-                                        <div className="space-y-4 mb-6">
-                                            {/* Vodafone Cash Button */}
-                                            <button 
-                                                onClick={() => handleCopy(config.vodafoneCash, 'vf')}
-                                                className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
-                                                    copiedVF 
-                                                    ? 'bg-green-500 text-white shadow-green-200' 
-                                                    : 'bg-red-600 text-white shadow-red-200 hover:bg-red-700 hover:scale-[1.02]'
-                                                }`}
-                                            >
-                                                {copiedVF ? <Icons.Check className="w-5 h-5" /> : <Icons.Phone className="w-5 h-5" />}
-                                                {copiedVF ? 'تم نسخ الرقم' : `فودافون كاش: ${config.vodafoneCash}`}
-                                            </button>
+                                            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 flex items-center justify-between group cursor-pointer hover:border-blue-200 hover:bg-blue-50 transition-all" onClick={handleCopy}>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-400 font-semibold mb-1">رقم فودافون كاش</p>
+                                                    <p className="text-xl font-black text-gray-800 font-mono tracking-wider">{adminPhone}</p>
+                                                </div>
+                                                <div className={`p-2.5 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white text-gray-400 shadow-sm'}`}>
+                                                    {copied ? <Icons.Check className="w-5 h-5" /> : <Icons.Copy className="w-5 h-5" />}
+                                                </div>
+                                            </div>
 
-                                            {/* InstaPay Button */}
-                                            <button 
-                                                onClick={() => handleCopy(config.instaPay, 'insta')}
-                                                className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
-                                                    copiedInsta 
-                                                    ? 'bg-green-500 text-white shadow-green-200' 
-                                                    : 'bg-purple-600 text-white shadow-purple-200 hover:bg-purple-700 hover:scale-[1.02]'
-                                                }`}
-                                            >
-                                                {copiedInsta ? <Icons.Check className="w-5 h-5" /> : <Icons.InstaPay className="w-5 h-5" />}
-                                                {copiedInsta ? 'تم نسخ المعرف' : `انستا باي: ${config.instaPay}`}
-                                            </button>
-                                        </div>
-
-                                        <div className="space-y-3 pt-2 border-t border-gray-100">
-                                            <a href={`tel:${config.vodafoneCash}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">
-                                                <Icons.Phone className="w-4 h-4" />
-                                                اتصال للاستفسار
-                                            </a>
+                                            <div className="space-y-3">
+                                                <button onClick={() => setModalView('form')} className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-gray-800 transition-all shadow-lg shadow-gray-200">
+                                                    <Icons.Send className="w-4 h-4" />
+                                                    إرسال تأكيد الدفع
+                                                </button>
+                                                <a href={`tel:${adminPhone}`} className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">
+                                                    <Icons.Phone className="w-4 h-4" />
+                                                    اتصال هاتفي
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {modalView === 'form' && (
+                                    <div className="p-6">
+                                        <div className="text-center mb-6">
+                                            <h3 className="text-xl font-bold text-gray-800">تأكيد الدفع</h3>
+                                            <p className="text-gray-500 text-sm">املأ البيانات لإبلاغ الإدارة بالدفع</p>
+                                        </div>
+
+                                        <form onSubmit={handleSubmit} className="space-y-4">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-500 pr-1">اسم الطالب</label>
+                                                <div className="relative">
+                                                    <input type="text" required placeholder="الاسم ثلاثي" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-medium" value={formData.studentName} onChange={(e) => setFormData({...formData, studentName: e.target.value})} />
+                                                    <span className="absolute right-3 top-3.5"><Icons.User className="w-4 h-4 text-gray-400" /></span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-500 pr-1">رقم المحفظة (المرسل منه)</label>
+                                                <div className="relative">
+                                                    <input type="tel" required placeholder="01xxxxxxxxx" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-medium" value={formData.paymentPhone} onChange={(e) => setFormData({...formData, paymentPhone: e.target.value})} />
+                                                    <span className="absolute right-3 top-3.5"><Icons.Smartphone className="w-4 h-4 text-gray-400" /></span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-gray-500 pr-1">ملاحظات (اختياري)</label>
+                                                <div className="relative">
+                                                    <textarea placeholder="مثال: تم تحويل شهر أكتوبر" rows="2" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm font-medium resize-none" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+                                                    <span className="absolute right-3 top-3.5"><Icons.MessageSquare className="w-4 h-4 text-gray-400" /></span>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2 flex gap-3">
+                                                <button type="button" onClick={() => setModalView('info')} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">رجوع</button>
+                                                <button type="submit" disabled={isSubmitting} className="flex-[2] bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-xl font-bold text-sm hover:shadow-lg shadow-indigo-200 transition-all disabled:opacity-70 flex items-center justify-center gap-2">
+                                                    {isSubmitting ? 'جاري الإرسال...' : 'تأكيد العملية'}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                )}
+
+                                {modalView === 'success' && (
+                                    <div className="p-8 text-center">
+                                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                                            <Icons.Check className="w-10 h-10 text-green-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-800 mb-2">تم الإرسال بنجاح!</h3>
+                                        <p className="text-gray-500 text-sm mb-6">تم تسجيل بياناتك للدفع في مادة {selectedSubject.subject}.</p>
+                                        <button onClick={closeModal} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors">إغلاق</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         )}
